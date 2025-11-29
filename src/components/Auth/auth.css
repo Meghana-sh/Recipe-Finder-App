@@ -1,0 +1,60 @@
+/* Auth styles - attractive card, responsive layout */
+.auth-root {
+  min-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+.auth-card {
+  width: 960px;
+  max-width: 95%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+  border-radius: 12px;
+}
+.auth-visual {
+  background: linear-gradient(180deg,#ff9a9e 0%,#fecfef 100%);
+  color: #111;
+  padding: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.auth-brand { text-align: center; }
+.logo {
+  width: 80px;
+  height: 80px;
+  background: rgba(255,255,255,0.85);
+  border-radius: 18px;
+  font-weight: 700;
+  font-size: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #c23b6b;
+  margin-bottom: 0.8rem;
+}
+.auth-brand h3 { margin: 0; font-weight: 700 }
+.auth-brand .lead { opacity: 0.9; margin-top: 0.6rem }
+
+.auth-form { padding: 2.2rem; background: #fff; }
+.mode-toggle { display:flex; gap:8px; justify-content:flex-start; margin-bottom:1rem }
+.mode-toggle button { padding: 8px 14px; border-radius: 999px; border:1px solid #e9e9e9; background:transparent }
+.mode-toggle button.active { background: #f2f2f2; box-shadow: 0 2px 8px rgba(0,0,0,0.06) }
+
+.form-stack { display:flex; flex-direction:column; gap:12px }
+.form-group label { font-size: 0.85rem; color:#333 }
+.password-row { display:flex; gap:8px }
+.pwd-toggle { width:78px }
+.btn-block { width:100% }
+.divider { text-align:center; margin:10px 0; color:#999 }
+.socials .btn { display:block }
+
+.small { font-size:0.8rem }
+
+@media (max-width: 768px) {
+  .auth-card { grid-template-columns: 1fr; }
+  .auth-visual { padding: 1.5rem }
+}
