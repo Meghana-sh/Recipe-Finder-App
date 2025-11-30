@@ -13,6 +13,8 @@ function extractIngredients(meal) {
 export default function RecipeModal({ meal, onClose }) {
   const ingredients = extractIngredients(meal)
   const [checked, setChecked] = React.useState(() => ingredients.map(() => false))
+  const [stepMode, setStepMode] = React.useState(false)
+  const [stepIndex, setStepIndex] = React.useState(0)
 
   const toggle = (i) => setChecked(c => c.map((v, idx) => idx === i ? !v : v))
 
@@ -35,6 +37,11 @@ export default function RecipeModal({ meal, onClose }) {
     try { await navigator.clipboard.writeText(url); alert('Link copied to clipboard') } catch (e) { alert('Copy failed') }
   }
 
+  const startCooking = () => { setStepMode(true); setStepIndex(0) }
+  const exitCooking = () => { setStepMode(false); setStepIndex(0) }
+  const nextStep = () => setStepIndex(i => Math.min(i+1, Math.max(0, ingredients.length-1)))
+  const prevStep = () => setStepIndex(i => Math.max(i-1, 0))
+
   return (
     <div className="modal-backdrop">
       <div className="modal-dialog modal-lg">
@@ -42,6 +49,8 @@ export default function RecipeModal({ meal, onClose }) {
           <div className="d-flex justify-content-between align-items-start">
             <h4>{meal.strMeal}</h4>
             <div>
+              {!stepMode && <button className="btn btn-sm btn-success me-2" onClick={startCooking}>Start Cooking</button>}
+              {stepMode && <button className="btn btn-sm btn-secondary me-2" onClick={exitCooking}>Exit Cooking</button>}
               <button className="btn btn-sm btn-outline-secondary me-2" onClick={copyToClipboard}>Share</button>
               <button className="btn-close" onClick={onClose} aria-label="Close"></button>
             </div>
@@ -53,27 +62,48 @@ export default function RecipeModal({ meal, onClose }) {
               <p><strong>Area:</strong> {meal.strArea}</p>
             </div>
             <div className="col-md-7">
-              <h5>Ingredients</h5>
-              <div>
-                {ingredients.map((it, idx) => (
-                  <div key={idx} className="form-check">
-                    <input className="form-check-input" type="checkbox" id={`ing-${idx}`} checked={!!checked[idx]} onChange={() => toggle(idx)} />
-                    <label className="form-check-label" htmlFor={`ing-${idx}`}>{it}</label>
+              {!stepMode && (
+                <>
+                  <h5>Ingredients</h5>
+                  <div>
+                    {ingredients.map((it, idx) => (
+                      <div key={idx} className="form-check">
+                        <input className="form-check-input" type="checkbox" id={`ing-${idx}`} checked={!!checked[idx]} onChange={() => toggle(idx)} />
+                        <label className="form-check-label" htmlFor={`ing-${idx}`}>{it}</label>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
 
-              <div className="mt-3 d-flex gap-2">
-                <button className="btn btn-outline-success" onClick={exportShoppingList}>Export Shopping List</button>
-              </div>
+                  <div className="mt-3 d-flex gap-2">
+                    <button className="btn btn-outline-success" onClick={exportShoppingList}>Export Shopping List</button>
+                  </div>
 
-              <h5 className="mt-3">Instructions</h5>
-              <p style={{ whiteSpace: 'pre-wrap' }}>{meal.strInstructions}</p>
+                  <h5 className="mt-3">Instructions</h5>
+                  <p style={{ whiteSpace: 'pre-wrap' }}>{meal.strInstructions}</p>
 
-              {meal.strYoutube && (
-                <p>
-                  <a href={meal.strYoutube} target="_blank" rel="noreferrer">Watch on YouTube</a>
-                </p>
+                  {meal.strYoutube && (
+                    <p>
+                      <a href={meal.strYoutube} target="_blank" rel="noreferrer">Watch on YouTube</a>
+                    </p>
+                  )}
+                </>
+              )}
+
+              {stepMode && (
+                <div>
+                  <h5>Step-by-step Cooking</h5>
+                  <div className="border rounded p-3 mb-2">
+                    <div className="small text-muted">Ingredient {stepIndex+1} of {Math.max(1, ingredients.length)}</div>
+                    <div className="h5 mt-2">{ingredients[stepIndex]}</div>
+                  </div>
+                  <div className="d-flex justify-content-between">
+                    <button className="btn btn-outline-secondary" onClick={prevStep} disabled={stepIndex===0}>Previous</button>
+                    <div>
+                      <button className="btn btn-outline-primary me-2" onClick={prevStep} disabled={stepIndex===0}>Back</button>
+                      <button className="btn btn-primary" onClick={nextStep} disabled={stepIndex===ingredients.length-1}>Next</button>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           </div>
