@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import './auth.css'
+import { getOAuthUrlParams, fetchGoogleUserInfo, fetchGitHubUserInfo, storeAuthToken } from '../../helpers/authHelper'
 
 export default function AuthPage({ onAuth }) {
   const [mode, setMode] = useState('login') // 'login' or 'signup'
@@ -7,6 +8,25 @@ export default function AuthPage({ onAuth }) {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+
+  // Handle OAuth callback on page load
+  useEffect(() => {
+    const params = getOAuthUrlParams()
+    if (params.accessToken) {
+      handleOAuthCallback(params.accessToken)
+    }
+  }, [])
+
+  const handleOAuthCallback = async (accessToken) => {
+    // Try to determine if this is Google or GitHub token
+    // Google tokens can be verified with googleapis.com
+    const userInfo = await fetchGoogleUserInfo(accessToken)
+    if (userInfo) {
+      storeAuthToken('google', accessToken)
+      setSuccess('Successfully logged in with Google!')
+      setTimeout(() => onAuth(userInfo), 600)
+    }
+  }
 
   const onChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
@@ -29,6 +49,48 @@ export default function AuthPage({ onAuth }) {
     if (onAuth) {
       // small delay so user sees the success message briefly
       setTimeout(() => onAuth({ name: form.name, email: form.email }), 600)
+    }
+  }
+
+  const handleGoogleAuth = () => {
+    setError('')
+    // Initialize Google OAuth
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID'
+    const redirectUri = `${window.location.origin}/Recipe-Finder-App/`
+    const scope = 'openid profile email'
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${encodeURIComponent(scope)}`
+    
+    // For demo, simulate successful Google auth
+    if (clientId === 'YOUR_GOOGLE_CLIENT_ID') {
+      setSuccess('Google authentication requires setup. For now, using demo auth...')
+      setTimeout(() => onAuth({ 
+        name: 'Google User', 
+        email: 'user@gmail.com',
+        provider: 'google'
+      }), 800)
+    } else {
+      window.location.href = authUrl
+    }
+  }
+
+  const handleGitHubAuth = () => {
+    setError('')
+    // Initialize GitHub OAuth
+    const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID || 'YOUR_GITHUB_CLIENT_ID'
+    const redirectUri = `${window.location.origin}/Recipe-Finder-App/`
+    const scope = 'user:email'
+    const authUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}`
+    
+    // For demo, simulate successful GitHub auth
+    if (clientId === 'YOUR_GITHUB_CLIENT_ID') {
+      setSuccess('GitHub authentication requires setup. For now, using demo auth...')
+      setTimeout(() => onAuth({ 
+        name: 'GitHub User', 
+        email: 'user@github.com',
+        provider: 'github'
+      }), 800)
+    } else {
+      window.location.href = authUrl
     }
   }
 
@@ -85,8 +147,12 @@ export default function AuthPage({ onAuth }) {
             <div className="divider">or</div>
 
             <div className="socials">
-              <button type="button" className="btn btn-outline-danger btn-block">Continue with Google</button>
-              <button type="button" className="btn btn-outline-dark btn-block mt-2">Continue with GitHub</button>
+              <button type="button" className="btn btn-outline-danger btn-block" onClick={handleGoogleAuth}>
+                <span style={{ marginRight: '8px' }}>🔵</span>Continue with Google
+              </button>
+              <button type="button" className="btn btn-outline-dark btn-block mt-2" onClick={handleGitHubAuth}>
+                <span style={{ marginRight: '8px' }}>⚫</span>Continue with GitHub
+              </button>
             </div>
 
             <p className="small mt-3 text-muted">By continuing you agree to our Terms and Privacy Policy.</p>
