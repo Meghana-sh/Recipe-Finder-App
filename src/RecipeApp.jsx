@@ -4,6 +4,8 @@ import Pantry from './components/Pantry'
 import RecipeCard from './components/RecipeCard'
 import RecipeModal from './components/RecipeModal'
 import ImageRecognition from './components/ImageRecognition'
+import Recommendations from './components/Recommendations'
+import { trackUserAction } from './helpers/recommendationsHelper'
 
 export default function RecipeApp() {
   const [query, setQuery] = useState('')
@@ -185,25 +187,34 @@ export default function RecipeApp() {
 
   const searchRecipes = async (ingredients) => {
     setQuery(ingredients)
+    try {
+      trackUserAction('search', ingredients)
+    } catch (e) {}
     setLoading(true)
     setError('')
     setRecipes([])
     try {
+      let ingData = null
+      let nameData = null
+      
       // First try ingredient search (best for comma-separated ingredients)
       const byIngredient = await fetch(`https://www.themealdb.com/api/json/v1/1/filter.php?i=${encodeURIComponent(ingredients)}`)
-      const ingData = await byIngredient.json()
+      ingData = await byIngredient.json()
+      
       if (ingData.meals && ingData.meals.length) {
         setRecipes(ingData.meals)
       } else {
         // Fallback: try searching by meal name (users often type dish names)
         const byName = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(ingredients)}`)
-        const nameData = await byName.json()
+        nameData = await byName.json()
         if (nameData.meals && nameData.meals.length) {
           // search.php returns full meal objects; map to the same minimal shape if necessary
           setRecipes(nameData.meals.map(m => ({ idMeal: m.idMeal, strMeal: m.strMeal, strMealThumb: m.strMealThumb })))
         } else {
           setRecipes([])
           setError('No recipes found — try common ingredients like "chicken" or "rice", or a dish name (e.g. "arrabiata").')
+          setLoading(false)
+          return
         }
       }
       // build the base list (either from ingredient search or name search)
@@ -358,6 +369,9 @@ export default function RecipeApp() {
     if (exists) next = favorites.filter(f => f.idMeal !== meal.idMeal)
     else next = [{ idMeal: meal.idMeal, strMeal: meal.strMeal, strMealThumb: meal.strMealThumb }, ...favorites]
     saveFavorites(next)
+    try {
+      trackUserAction('favorite')
+    } catch (e) {}
   }
 
   // Apply dietary filters client-side. Use enriched `rawRecipes` when available.
@@ -431,15 +445,15 @@ export default function RecipeApp() {
 
         <div className="ms-2 d-flex gap-2 align-items-center">
           <div className="form-check form-check-inline">
-            <input className="form-check-input" type="checkbox" id="diet-veg" checked={dietFilters.vegetarian} onChange={(e)=> setDietFilters(d=>({ ...d, vegetarian: e.target.checked }))} />
+            <input className="form-check-input" type="checkbox" id="diet-veg" checked={dietFilters.vegetarian} onChange={(e)=> { try { trackUserAction('dietaryFilter', 'vegetarian') } catch (err) {} setDietFilters(d=>({ ...d, vegetarian: e.target.checked })) }} />
             <label className="form-check-label" htmlFor="diet-veg">Vegetarian</label>
           </div>
           <div className="form-check form-check-inline">
-            <input className="form-check-input" type="checkbox" id="diet-vegan" checked={dietFilters.vegan} onChange={(e)=> setDietFilters(d=>({ ...d, vegan: e.target.checked }))} />
+            <input className="form-check-input" type="checkbox" id="diet-vegan" checked={dietFilters.vegan} onChange={(e)=> { try { trackUserAction('dietaryFilter', 'vegan') } catch (err) {} setDietFilters(d=>({ ...d, vegan: e.target.checked })) }} />
             <label className="form-check-label" htmlFor="diet-vegan">Vegan</label>
           </div>
           <div className="form-check form-check-inline">
-            <input className="form-check-input" type="checkbox" id="diet-gf" checked={dietFilters.glutenFree} onChange={(e)=> setDietFilters(d=>({ ...d, glutenFree: e.target.checked }))} />
+            <input className="form-check-input" type="checkbox" id="diet-gf" checked={dietFilters.glutenFree} onChange={(e)=> { try { trackUserAction('dietaryFilter', 'gluten-free') } catch (err) {} setDietFilters(d=>({ ...d, glutenFree: e.target.checked })) }} />
             <label className="form-check-label" htmlFor="diet-gf">Gluten-free</label>
           </div>
         </div>
@@ -449,6 +463,8 @@ export default function RecipeApp() {
 
       {loading && <div className="mt-3">Loading...</div>}
       {error && <div className="alert alert-warning mt-3">{error}</div>}
+
+      <Recommendations onSearchSelect={(q) => { setFilter({ category: '', area: '' }); setVisibleCount(6); searchRecipes(q) }} />
 
       <div className="row mt-4">
         {displayed.map((r) => (
