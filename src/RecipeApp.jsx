@@ -13,6 +13,7 @@ import RecipeCard from './components/RecipeCard'
 import RecipeModal from './components/RecipeModal'
 import ImageRecognition from './components/ImageRecognition'
 import Recommendations from './components/Recommendations'
+import Dashboard from './components/Dashboard'
 import { trackUserAction } from './helpers/recommendationsHelper'
 
 export default function RecipeApp() {
@@ -23,6 +24,7 @@ export default function RecipeApp() {
   const [error, setError] = useState('')
   const [selected, setSelected] = useState(null)
   const [favorites, setFavorites] = useState([])
+  const [showDashboard, setShowDashboard] = useState(false)
   const [showFavorites, setShowFavorites] = useState(false)
   const [visibleCount, setVisibleCount] = useState(6) // pagination: show more
   const [categories, setCategories] = useState([])
@@ -209,8 +211,35 @@ export default function RecipeApp() {
       // First try ingredient search (best for comma-separated ingredients)
       const byIngredient = await fetch(`https://www.themealdb.com/api/json/v1/1/filter.php?i=${encodeURIComponent(ingredients)}`)
       ingData = await byIngredient.json()
-      
-      if (ingData.meals && ingData.meals.length) {
+
+      // If no direct match for the full ingredient string, try tokenized ingredient searches
+      if (!(ingData && ingData.meals && ingData.meals.length)) {
+        const tokens = (ingredients || '').split(/[ ,]+/).map(t => t.trim()).filter(t => t && t.length > 1)
+        if (tokens.length) {
+          const map = new Map()
+          for (const token of tokens) {
+            try {
+              const r = await fetch(`https://www.themealdb.com/api/json/v1/1/filter.php?i=${encodeURIComponent(token)}`)
+              const j = await r.json()
+              if (j && j.meals) {
+                j.meals.forEach(m => {
+                  const id = m.idMeal
+                  const existing = map.get(id)
+                  if (existing) existing.count += 1
+                  else map.set(id, { meal: m, count: 1 })
+                })
+              }
+            } catch (e) { /* ignore token fetch errors */ }
+          }
+          if (map.size) {
+            // build array sorted by match count (more ingredient matches first)
+            const combined = Array.from(map.values()).sort((a,b) => b.count - a.count).map(v => v.meal)
+            ingData = { meals: combined }
+          }
+        }
+      }
+
+      if (ingData && ingData.meals && ingData.meals.length) {
         setRecipes(ingData.meals)
       } else {
         // Fallback: try searching by meal name (users often type dish names)
@@ -446,6 +475,9 @@ export default function RecipeApp() {
           <button className={`btn btn-sm ${showFavorites ? 'btn-primary' : 'btn-outline-primary'} me-2`} onClick={() => setShowFavorites(s => !s)}>
             {showFavorites ? 'Viewing Favorites' : 'View Favorites'} ({favorites.length})
           </button>
+          <button className={`btn btn-sm ${showDashboard ? 'btn-primary' : 'btn-outline-secondary'} me-2`} onClick={() => setShowDashboard(s => !s)}>
+            {showDashboard ? 'Hide Dashboard' : 'Show Dashboard'}
+          </button>
           <button className="btn btn-sm btn-outline-secondary" onClick={() => { setVisibleCount(6); searchRecipes('chicken') }}>Reset</button>
         </div>
       </div>
@@ -462,6 +494,11 @@ export default function RecipeApp() {
         </div>
 
         <div className="col-md-9">
+          {showDashboard && (
+            <div className="mb-3">
+              <Dashboard onSearch={(q) => { setFilter({ category: '', area: '' }); setVisibleCount(6); searchRecipes(q) }} />
+            </div>
+          )}
           <div className="d-flex gap-2 mb-3 align-items-center">
             <div style={{ flex: 1 }}>
               <SearchBar onSearch={(q) => { setFilter({ category: '', area: '' }); setVisibleCount(6); searchRecipes(q) }} />
