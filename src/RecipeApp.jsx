@@ -3,6 +3,7 @@ import SearchBar from './components/SearchBar'
 import Pantry from './components/Pantry'
 import RecipeCard from './components/RecipeCard'
 import RecipeModal from './components/RecipeModal'
+import ImageRecognition from './components/ImageRecognition'
 
 export default function RecipeApp() {
   const [query, setQuery] = useState('')
@@ -19,6 +20,7 @@ export default function RecipeApp() {
   const [pantry, setPantry] = useState([])
   const [dietFilters, setDietFilters] = useState({ vegetarian: false, vegan: false, glutenFree: false })
   const [rawRecipes, setRawRecipes] = useState([])
+  const [showImageRecognition, setShowImageRecognition] = useState(false)
 
   // --- Ingredient normalization & tagging helpers ---
   const normalizeIngredient = (s) => {
@@ -173,6 +175,12 @@ export default function RecipeApp() {
       setFavorites(nextFavs)
       try { localStorage.setItem('rf_favorites', JSON.stringify(nextFavs)) } catch (e) {}
     }
+  }
+
+  // Handle detected ingredients from image recognition
+  const handleImageIngredientsDetected = (ingredients) => {
+    // Search for recipes using the detected ingredients
+    searchRecipes(ingredients.join(','))
   }
 
   const searchRecipes = async (ingredients) => {
@@ -397,8 +405,11 @@ export default function RecipeApp() {
       <div className="row">
         <div className="col-md-3">
           <Pantry onChange={(items) => setPantry(items)} />
-          <div className="d-grid">
-            <button className="btn btn-outline-primary mb-3" onClick={() => { if (pantry.length) searchRecipes(pantry.join(',')) }}>Find recipes from pantry</button>
+          <div className="d-grid gap-2">
+            <button className="btn btn-outline-primary" onClick={() => { if (pantry.length) searchRecipes(pantry.join(',')) }}>Find recipes from pantry</button>
+            <button className="btn btn-outline-success" onClick={() => setShowImageRecognition(true)} title="Detect ingredients from food image">
+              📸 Detect Ingredients
+            </button>
           </div>
         </div>
 
@@ -458,6 +469,13 @@ export default function RecipeApp() {
       )}
 
       {selected && <RecipeModal meal={selected} onClose={closeModal} />}
+
+      {showImageRecognition && (
+        <ImageRecognition
+          onIngredientsDetected={handleImageIngredientsDetected}
+          onClose={() => setShowImageRecognition(false)}
+        />
+      )}
     </div>
   )
 }

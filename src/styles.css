@@ -83,4 +83,13 @@ body { background: var(--bg); color: var(--text); }
   50% { opacity: 0.5; }
 }
 
+/* image recognition styles */
+.modal-dialog.modal-lg {
+  max-width: 600px;
+}
+
+.form-check {
+  margin-bottom: 0.5rem;
+}
+
 
