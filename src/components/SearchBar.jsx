@@ -12,9 +12,45 @@ export default function SearchBar({ onSearch }) {
   const [recent, setRecent] = useState([])
   const [open, setOpen] = useState(false)
   const [suggests, setSuggests] = useState([])
+  const [listening, setListening] = useState(false)
+  const [voiceSupported, setVoiceSupported] = useState(false)
   const ref = useRef()
+  const recognitionRef = useRef(null)
 
   const fuse = useRef(new Fuse(COMMON_INGREDIENTS.map(i=>({i})), { keys: ['i'], threshold: 0.4 }))
+
+  // Initialize Web Speech API on mount
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (SpeechRecognition) {
+      setVoiceSupported(true)
+      recognitionRef.current = new SpeechRecognition()
+      recognitionRef.current.continuous = false
+      recognitionRef.current.interimResults = true
+      recognitionRef.current.lang = 'en-US'
+
+      recognitionRef.current.onstart = () => {
+        setListening(true)
+      }
+
+      recognitionRef.current.onresult = (event) => {
+        let transcript = ''
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript + ' '
+        }
+        setValue(transcript.trim())
+      }
+
+      recognitionRef.current.onend = () => {
+        setListening(false)
+      }
+
+      recognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error:', event.error)
+        setListening(false)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     const raw = localStorage.getItem(RECENT_KEY)
@@ -54,6 +90,17 @@ export default function SearchBar({ onSearch }) {
     onSearch(r)
   }
 
+  const toggleVoiceSearch = () => {
+    if (!recognitionRef.current) return
+    if (listening) {
+      recognitionRef.current.stop()
+      setListening(false)
+    } else {
+      setValue('') // clear input before listening
+      recognitionRef.current.start()
+    }
+  }
+
   return (
     <div className="position-relative" ref={ref}>
       <form onSubmit={submit} className="input-group">
@@ -65,6 +112,16 @@ export default function SearchBar({ onSearch }) {
           onChange={(e) => { setValue(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
         />
+        {voiceSupported && (
+          <button
+            type="button"
+            className={`btn ${listening ? 'btn-danger' : 'btn-outline-secondary'}`}
+            onClick={toggleVoiceSearch}
+            title="Voice search (click to speak)"
+          >
+            🎤
+          </button>
+        )}
         <button className="btn btn-primary" type="submit">
           Search
         </button>
@@ -79,6 +136,12 @@ export default function SearchBar({ onSearch }) {
           {!value && recent && recent.length > 0 && recent.map((r, idx) => (
             <button key={idx} className="list-group-item list-group-item-action" onClick={() => choose(r)}>{r}</button>
           ))}
+        </div>
+      )}
+
+      {listening && (
+        <div className="alert alert-info mt-2 mb-0">
+          <span className="voice-pulse">🎙️</span> Listening... Speak now
         </div>
       )}
     </div>

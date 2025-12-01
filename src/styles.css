@@ -73,4 +73,14 @@ body { background: var(--bg); color: var(--text); }
 .card { transition: transform .18s ease, box-shadow .18s ease }
 .card:hover { transform: translateY(-6px); box-shadow: 0 10px 30px rgba(2,6,23,0.08) }
 
+/* voice search pulse animation */
+.voice-pulse {
+  display: inline-block;
+  animation: pulse-voice 1s ease-in-out infinite;
+}
+@keyframes pulse-voice {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 
