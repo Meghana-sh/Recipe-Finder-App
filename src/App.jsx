@@ -17,12 +17,33 @@ export default function App() {
   }
 
   return (
-    <div>
-      <div className="d-flex justify-content-end align-items-center p-3 gap-2">
-        <ThemeToggle />
-        <div className="me-3">Signed in as <strong>{user.email || user.name}</strong></div>
-        <button className="btn btn-outline-secondary btn-sm" onClick={logout}>Log out</button>
-      </div>
+    <div className="app-container">
+      <header className="app-header">
+        <div className="header-content">
+          <div className="header-left">
+            <div className="app-brand">
+              <div className="brand-logo">🍳</div>
+              <div className="brand-text">
+                <h1>Recipe Finder</h1>
+                <p>Discover delicious recipes instantly</p>
+              </div>
+            </div>
+          </div>
+          <div className="header-right">
+            <div className="user-section">
+              <div className="user-avatar">{user.name?.charAt(0)?.toUpperCase()}</div>
+              <div className="user-info">
+                <div className="user-name">{user.name}</div>
+                <div className="user-email">{user.email}</div>
+              </div>
+              <div className="header-controls">
+                <ThemeToggle />
+                <button className="btn btn-logout" onClick={logout} title="Sign out">↗</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
       <RecipeApp />
     </div>
   )
