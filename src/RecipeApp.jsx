@@ -1,4 +1,12 @@
 import React, { useState, useEffect } from 'react'
+// Spelling / normalization map for common dish name variants
+const SPELLING_MAP = {
+  biriyani: 'biryani',
+  biryani: 'biryani',
+  briyani: 'biryani',
+  "chiken": 'chicken',
+  "chiken curry": 'chicken curry'
+}
 import SearchBar from './components/SearchBar'
 import Pantry from './components/Pantry'
 import RecipeCard from './components/RecipeCard'
@@ -9,6 +17,7 @@ import { trackUserAction } from './helpers/recommendationsHelper'
 
 export default function RecipeApp() {
   const [query, setQuery] = useState('')
+  const [suggestions, setSuggestions] = useState(null)
   const [recipes, setRecipes] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -210,9 +219,34 @@ export default function RecipeApp() {
         if (nameData.meals && nameData.meals.length) {
           // search.php returns full meal objects; map to the same minimal shape if necessary
           setRecipes(nameData.meals.map(m => ({ idMeal: m.idMeal, strMeal: m.strMeal, strMealThumb: m.strMealThumb })))
+          setSuggestions(null)
         } else {
+          // No exact matches — provide helpful suggestions (spelling alternates, ingredient searches)
           setRecipes([])
-          setError('No recipes found — try common ingredients like "chicken" or "rice", or a dish name (e.g. "arrabiata").')
+          const msg = 'No recipes found — try common ingredients like "chicken" or "rice", or a dish name (e.g. "arrabiata").'
+          setError(msg)
+
+          // Build suggestions
+          try {
+            const qNorm = (ingredients || '').toLowerCase().trim()
+            const alternates = []
+            if (qNorm && SPELLING_MAP[qNorm] && SPELLING_MAP[qNorm] !== qNorm) alternates.push(SPELLING_MAP[qNorm])
+
+            // Simple heuristics for ingredient suggestions
+            const ingredientSugs = []
+            if (/biri|bry|biriy/i.test(qNorm)) {
+              ingredientSugs.push('rice', 'chicken')
+            } else {
+              const first = qNorm.split(/\s+/)[0]
+              if (first && first.length > 2) ingredientSugs.push(first)
+              ingredientSugs.push('rice', 'chicken')
+            }
+
+            setSuggestions({ alternates: alternates.slice(0,3), ingredients: Array.from(new Set(ingredientSugs)).slice(0,4) })
+          } catch (e) {
+            setSuggestions(null)
+          }
+
           setLoading(false)
           return
         }
@@ -462,7 +496,34 @@ export default function RecipeApp() {
   </div>
 
       {loading && <div className="mt-3">Loading...</div>}
-      {error && <div className="alert alert-warning mt-3">{error}</div>}
+      {error && (
+        <div className="alert alert-warning mt-3">
+          {error}
+          {suggestions && (
+            <div className="mt-3">
+              {suggestions.alternates && suggestions.alternates.length > 0 && (
+                <div className="mb-2">
+                  <strong>Did you mean:</strong>
+                  {suggestions.alternates.map((a, i) => (
+                    <button key={i} className="btn btn-sm btn-outline-primary ms-2" onClick={() => { setFilter({ category: '', area: '' }); setVisibleCount(6); setSuggestions(null); searchRecipes(a) }}>{a}</button>
+                  ))}
+                </div>
+              )}
+
+              {suggestions.ingredients && suggestions.ingredients.length > 0 && (
+                <div>
+                  <small className="text-muted">Try searching by ingredient:</small>
+                  <div className="mt-2">
+                    {suggestions.ingredients.map((ing, i) => (
+                      <button key={i} className="btn btn-sm btn-outline-secondary me-2" onClick={() => { setFilter({ category: '', area: '' }); setVisibleCount(6); setSuggestions(null); searchRecipes(ing) }}>{ing}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <Recommendations onSearchSelect={(q) => { setFilter({ category: '', area: '' }); setVisibleCount(6); searchRecipes(q) }} />
 
