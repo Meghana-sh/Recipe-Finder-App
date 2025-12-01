@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+import { estimateRecipeNutrition } from '../helpers/nutritionHelper'
 
 function extractIngredients(meal) {
   const list = []
@@ -12,9 +13,31 @@ function extractIngredients(meal) {
 
 export default function RecipeModal({ meal, onClose }) {
   const ingredients = extractIngredients(meal)
-  const [checked, setChecked] = React.useState(() => ingredients.map(() => false))
-  const [stepMode, setStepMode] = React.useState(false)
-  const [stepIndex, setStepIndex] = React.useState(0)
+  const [checked, setChecked] = useState(() => ingredients.map(() => false))
+  const [stepMode, setStepMode] = useState(false)
+  const [stepIndex, setStepIndex] = useState(0)
+  const [nutrition, setNutrition] = useState(null)
+  const [loadingNutrition, setLoadingNutrition] = useState(false)
+  const [showNutrition, setShowNutrition] = useState(false)
+
+  // Fetch nutrition data on component mount
+  useEffect(() => {
+    const fetchNutrition = async () => {
+      setLoadingNutrition(true)
+      try {
+        const data = await estimateRecipeNutrition(ingredients)
+        setNutrition(data)
+      } catch (error) {
+        console.error('Error fetching nutrition:', error)
+      } finally {
+        setLoadingNutrition(false)
+      }
+    }
+
+    if (ingredients.length > 0) {
+      fetchNutrition()
+    }
+  }, [ingredients])
 
   const toggle = (i) => setChecked(c => c.map((v, idx) => idx === i ? !v : v))
 
@@ -76,7 +99,36 @@ export default function RecipeModal({ meal, onClose }) {
 
                   <div className="mt-3 d-flex gap-2">
                     <button className="btn btn-outline-success" onClick={exportShoppingList}>Export Shopping List</button>
+                    <button className="btn btn-outline-info" onClick={() => setShowNutrition(!showNutrition)}>
+                      {showNutrition ? 'Hide Nutrition' : 'Show Nutrition'} {nutrition && !loadingNutrition && '📊'}
+                    </button>
                   </div>
+
+                  {showNutrition && (
+                    <div className="mt-3 border rounded p-3" style={{ backgroundColor: '#f8f9fa' }}>
+                      <h6>Nutritional Breakdown (Estimated per recipe)</h6>
+                      {loadingNutrition && <div className="spinner"></div>}
+                      {!loadingNutrition && nutrition && (
+                        <div className="row">
+                          <div className="col-6">
+                            <p><strong>Calories:</strong> ~{nutrition.estimatedCalories} kcal</p>
+                            <p><strong>Protein:</strong> ~{nutrition.estimatedProtein}g</p>
+                            <p><strong>Carbs:</strong> ~{nutrition.estimatedCarbs}g</p>
+                            <p><strong>Fat:</strong> ~{nutrition.estimatedFat}g</p>
+                          </div>
+                          <div className="col-6">
+                            <small className="text-muted">Ingredients analyzed: {nutrition.ingredientsAnalyzed}</small>
+                            <p style={{ fontSize: '0.85em', marginTop: '1rem' }}>
+                              <em>Estimates based on USDA FoodData. Actual values depend on specific brands and cooking methods.</em>
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                      {!loadingNutrition && !nutrition && (
+                        <p className="text-muted">Unable to fetch nutrition data. Please try again later.</p>
+                      )}
+                    </div>
+                  )}
 
                   <h5 className="mt-3">Instructions</h5>
                   <p style={{ whiteSpace: 'pre-wrap' }}>{meal.strInstructions}</p>
